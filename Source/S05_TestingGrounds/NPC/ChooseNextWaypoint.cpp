@@ -6,7 +6,7 @@
 #include "PatrolRoute.h"
 #include "BehaviorTree/BlackboardComponent.h"
 
-EBTNodeResult::Type UChooseNextWaypoint::AbortTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
+EBTNodeResult::Type UChooseNextWaypoint::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
 	// Get the patrol route
 	auto ControlledPawn = OwnerComp.GetAIOwner()->GetPawn();
@@ -27,8 +27,7 @@ EBTNodeResult::Type UChooseNextWaypoint::AbortTask(UBehaviorTreeComponent& Owner
 	BlackboardComp->SetValueAsObject(WaypointKey.SelectedKeyName, PatrolPoints[Index]);
 
 	// Cycle the index
-	auto NextIndex = Index + 1;
-	if (NextIndex == PatrolPoints.Num()) { Index = 0; };
+	auto NextIndex = (Index + 1) % PatrolPoints.Num();
 	BlackboardComp->SetValueAsInt(IndexKey.SelectedKeyName, NextIndex);
 
 	return EBTNodeResult::Succeeded;
