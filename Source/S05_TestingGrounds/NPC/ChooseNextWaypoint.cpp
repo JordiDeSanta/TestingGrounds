@@ -4,6 +4,7 @@
 #include "ChooseNextWaypoint.h"
 #include "AIController.h"
 #include "PatrolRoute.h"
+#include "TargetDelayComponent.h"
 #include "BehaviorTree/BlackboardComponent.h"
 
 EBTNodeResult::Type UChooseNextWaypoint::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
@@ -25,6 +26,14 @@ EBTNodeResult::Type UChooseNextWaypoint::ExecuteTask(UBehaviorTreeComponent& Own
 	auto BlackboardComp = OwnerComp.GetBlackboardComponent();
 	auto Index = BlackboardComp->GetValueAsInt(IndexKey.SelectedKeyName);
 	BlackboardComp->SetValueAsObject(WaypointKey.SelectedKeyName, PatrolPoints[Index]);
+
+	// Set delay time
+	auto DelayComponent = PatrolPoints[Index]->FindComponentByClass<UTargetDelayComponent>();
+
+	if (DelayComponent != nullptr)
+	{
+		BlackboardComp->SetValueAsFloat(DelayKey.SelectedKeyName, DelayComponent->GetDelayTime());
+	};
 
 	// Cycle the index
 	auto NextIndex = (Index + 1) % PatrolPoints.Num();

@@ -22,5 +22,7 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Blackboard")
 		struct FBlackboardKeySelector WaypointKey;
-	
+
+	UPROPERTY(EditAnywhere, Category = "Blackboard")
+		struct FBlackboardKeySelector DelayKey;
 };
