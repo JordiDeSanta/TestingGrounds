@@ -1,17 +1,17 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "S05_TestingGrounds.h"
+
 #include "ChooseNextWaypoint.h"
 #include "AIController.h"
 #include "PatrolRoute.h"
 #include "BehaviorTree/BlackboardComponent.h"
 
-EBTNodeResult::Type UChooseNextWaypoint::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
+EBTNodeResult::Type UChooseNextWaypoint::AbortTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
 	// Get the patrol route
 	auto ControlledPawn = OwnerComp.GetAIOwner()->GetPawn();
 	auto PatrolRoute = ControlledPawn->FindComponentByClass<UPatrolRoute>();
-	if (!ensure(PatrolRoute)) { return EBTNodeResult::Failed; }
+	if (!PatrolRoute) { return EBTNodeResult::Failed; }
 
 	// Warn about empty patrol routes
 	auto PatrolPoints = PatrolRoute->GetPatrolPoints();
@@ -27,7 +27,8 @@ EBTNodeResult::Type UChooseNextWaypoint::ExecuteTask(UBehaviorTreeComponent& Own
 	BlackboardComp->SetValueAsObject(WaypointKey.SelectedKeyName, PatrolPoints[Index]);
 
 	// Cycle the index
-	auto NextIndex = (Index + 1) % PatrolPoints.Num();
+	auto NextIndex = Index + 1;
+	if (NextIndex == PatrolPoints.Num()) { Index = 0; };
 	BlackboardComp->SetValueAsInt(IndexKey.SelectedKeyName, NextIndex);
 
 	return EBTNodeResult::Succeeded;

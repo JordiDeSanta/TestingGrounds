@@ -1,9 +1,14 @@
-// Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
+// Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
-#include "S05_TestingGrounds.h"
 #include "FirstPersonCharacter.h"
-#include "GameFramework/InputSettings.h"
-#include "../Weapons/Gun.h"
+#include "Animation/AnimInstance.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/InputComponent.h"
+#include "Camera/CameraComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "GameFramework/PlayerController.h"
+
+#define COLLISION_WEAPON		ECC_GameTraceChannel1
 
 DEFINE_LOG_CATEGORY_STATIC(LogFPChar, Warning, All);
 
@@ -13,26 +18,35 @@ DEFINE_LOG_CATEGORY_STATIC(LogFPChar, Warning, All);
 AFirstPersonCharacter::AFirstPersonCharacter()
 {
 	// Set size for collision capsule
-	GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
+	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 
-	// set our turn rates for input
+	// Set our turn rates for input
 	BaseTurnRate = 45.f;
 	BaseLookUpRate = 45.f;
 
 	// Create a CameraComponent	
 	FirstPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
 	FirstPersonCameraComponent->SetupAttachment(GetCapsuleComponent());
-	FirstPersonCameraComponent->RelativeLocation = FVector(-39.56f, 1.75f, 64.f); // Position the camera
+	FirstPersonCameraComponent->RelativeLocation = FVector(0, 0, 64.f); // Position the camera
 	FirstPersonCameraComponent->bUsePawnControlRotation = true;
-
+	
 	// Create a mesh component that will be used when being viewed from a '1st person' view (when controlling this pawn)
 	Mesh1P = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CharacterMesh1P"));
-	Mesh1P->SetOnlyOwnerSee(true);
-	Mesh1P->SetupAttachment(FirstPersonCameraComponent);
-	Mesh1P->bCastDynamicShadow = false;
-	Mesh1P->CastShadow = false;
-	Mesh1P->RelativeRotation = FRotator(1.9f, -19.19f, 5.2f);
-	Mesh1P->RelativeLocation = FVector(-0.5f, -4.4f, -155.7f);
+	Mesh1P->SetOnlyOwnerSee(true);				// Set so only owner can see mesh
+	Mesh1P->SetupAttachment(FirstPersonCameraComponent);	// Attach mesh to FirstPersonCameraComponent
+	Mesh1P->bCastDynamicShadow = false;			// Disallow mesh to cast dynamic shadows
+	Mesh1P->CastShadow = false;				// Disallow mesh to cast other shadows
+
+	// Create a gun mesh component
+	FP_Gun = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FP_Gun"));
+	FP_Gun->SetOnlyOwnerSee(true);			// Only the owning player will see this mesh
+	FP_Gun->bCastDynamicShadow = false;		// Disallow mesh to cast dynamic shadows
+	FP_Gun->CastShadow = false;			// Disallow mesh to cast other shadows
+	FP_Gun->SetupAttachment(Mesh1P, TEXT("GripPoint"));
+
+	// Set weapon damage and range
+	WeaponRange = 5000.0f;
+	WeaponDamage = 500000.0f;
 
 	// Default offset from the character location for projectiles to spawn
 	GunOffset = FVector(100.0f, 30.0f, 10.0f);
@@ -41,106 +55,160 @@ AFirstPersonCharacter::AFirstPersonCharacter()
 	// derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 }
 
-void AFirstPersonCharacter::BeginPlay()
-{
-	// Call the base class  
-	Super::BeginPlay();
-
-	if (GunBlueprint == NULL) {
-		UE_LOG(LogTemp, Warning, TEXT("Gun blueprint missing."));
-		return;
-	}
-	Gun = GetWorld()->SpawnActor<AGun>(GunBlueprint);
-	Gun->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint")); //Attach gun mesh component to Skeleton, doing it here because the skelton is not yet created in the constructor
-	Gun->AnimInstance = Mesh1P->GetAnimInstance();
-	if (EnableTouchscreenMovement(InputComponent) == false)
-	{
-		InputComponent->BindAction("Fire", IE_Pressed, Gun, &AGun::OnFire);
-	}
-}
-
 //////////////////////////////////////////////////////////////////////////
 // Input
 
-void AFirstPersonCharacter::SetupPlayerInputComponent(class UInputComponent* InputComponent)
+void AFirstPersonCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
 {
 	// set up gameplay key bindings
-	check(InputComponent);
+	check(PlayerInputComponent);
+	
+	// Set up gameplay key bindings
 
-	InputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
-	InputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
+	// Bind jump events
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
+	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
+	
+	// Bind fire event
+	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AFirstPersonCharacter::OnFire);
+	
+	// Attempt to enable touch screen movement
+	TryEnableTouchscreenMovement(PlayerInputComponent);
 
-	//InputComponent->BindTouch(EInputEvent::IE_Pressed, this, &AFirstPersonCharacter::TouchStarted);
-	InputComponent->BindAxis("MoveForward", this, &AFirstPersonCharacter::MoveForward);
-	InputComponent->BindAxis("MoveRight", this, &AFirstPersonCharacter::MoveRight);
-
+	// Bind movement events
+	PlayerInputComponent->BindAxis("MoveForward", this, &AFirstPersonCharacter::MoveForward);
+	PlayerInputComponent->BindAxis("MoveRight", this, &AFirstPersonCharacter::MoveRight);
+	
 	// We have 2 versions of the rotation bindings to handle different kinds of devices differently
 	// "turn" handles devices that provide an absolute delta, such as a mouse.
 	// "turnrate" is for devices that we choose to treat as a rate of change, such as an analog joystick
-	InputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
-	InputComponent->BindAxis("TurnRate", this, &AFirstPersonCharacter::TurnAtRate);
-	InputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
-	InputComponent->BindAxis("LookUpRate", this, &AFirstPersonCharacter::LookUpAtRate);
+	PlayerInputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
+	PlayerInputComponent->BindAxis("TurnRate", this, &AFirstPersonCharacter::TurnAtRate);
+	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
+	PlayerInputComponent->BindAxis("LookUpRate", this, &AFirstPersonCharacter::LookUpAtRate);
 }
 
+void AFirstPersonCharacter::OnFire()
+{
+	// Play a sound if there is one
+	if (FireSound != NULL)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, FireSound, GetActorLocation());
+	}
+
+	// Try and play a firing animation if specified
+	if (FireAnimation != NULL)
+	{
+		// Get the animation object for the arms mesh
+		UAnimInstance* AnimInstance = Mesh1P->GetAnimInstance();
+		if (AnimInstance != NULL)
+		{
+			AnimInstance->Montage_Play(FireAnimation, 1.f);
+		}
+	}
+
+	// Now send a trace from the end of our gun to see if we should hit anything
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	
+	FVector ShootDir = FVector::ZeroVector;
+	FVector StartTrace = FVector::ZeroVector;
+
+	if (PlayerController)
+	{
+		// Calculate the direction of fire and the start location for trace
+		FRotator CamRot;
+		PlayerController->GetPlayerViewPoint(StartTrace, CamRot);
+		ShootDir = CamRot.Vector();
+
+		// Adjust trace so there is nothing blocking the ray between the camera and the pawn, and calculate distance from adjusted start
+		StartTrace = StartTrace + ShootDir * ((GetActorLocation() - StartTrace) | ShootDir);
+	}
+
+	// Calculate endpoint of trace
+	const FVector EndTrace = StartTrace + ShootDir * WeaponRange;
+
+	// Check for impact
+	const FHitResult Impact = WeaponTrace(StartTrace, EndTrace);
+
+	// Deal with impact
+	AActor* DamagedActor = Impact.GetActor();
+	UPrimitiveComponent* DamagedComponent = Impact.GetComponent();
+
+	// If we hit an actor, with a component that is simulating physics, apply an impulse
+	if ((DamagedActor != NULL) && (DamagedActor != this) && (DamagedComponent != NULL) && DamagedComponent->IsSimulatingPhysics())
+	{
+		DamagedComponent->AddImpulseAtLocation(ShootDir * WeaponDamage, Impact.Location);
+	}
+}
 
 
 void AFirstPersonCharacter::BeginTouch(const ETouchIndex::Type FingerIndex, const FVector Location)
 {
+	// If touch is already pressed check the index. If it is not the same as the current touch assume a second touch and thus we want to fire
 	if (TouchItem.bIsPressed == true)
 	{
-		return;
+		if( TouchItem.FingerIndex != FingerIndex)
+		{
+			OnFire();			
+		}
 	}
-	TouchItem.bIsPressed = true;
-	TouchItem.FingerIndex = FingerIndex;
-	TouchItem.Location = Location;
-	TouchItem.bMoved = false;
+	else 
+	{
+		// Cache the finger index and touch location and flag we are processing a touch
+		TouchItem.bIsPressed = true;
+		TouchItem.FingerIndex = FingerIndex;
+		TouchItem.Location = Location;
+		TouchItem.bMoved = false;
+	}
 }
 
 void AFirstPersonCharacter::EndTouch(const ETouchIndex::Type FingerIndex, const FVector Location)
 {
-	if (TouchItem.bIsPressed == false)
+	// If we didn't record the start event do nothing, or this is a different index
+	if((TouchItem.bIsPressed == false) || ( TouchItem.FingerIndex != FingerIndex) )
 	{
 		return;
 	}
+
+	// If the index matches the start index and we didn't process any movement we assume we want to fire
 	if ((FingerIndex == TouchItem.FingerIndex) && (TouchItem.bMoved == false))
 	{
-		//OnFire();
+		OnFire();
 	}
+
+	// Flag we are no longer processing the touch event
 	TouchItem.bIsPressed = false;
 }
 
 void AFirstPersonCharacter::TouchUpdate(const ETouchIndex::Type FingerIndex, const FVector Location)
 {
+	// If we are processing a touch event and this index matches the initial touch event process movement
 	if ((TouchItem.bIsPressed == true) && (TouchItem.FingerIndex == FingerIndex))
 	{
-		if (TouchItem.bIsPressed)
+		if (GetWorld() != nullptr)
 		{
-			if (GetWorld() != nullptr)
+			UGameViewportClient* ViewportClient = GetWorld()->GetGameViewport();
+			if (ViewportClient != nullptr)
 			{
-				UGameViewportClient* ViewportClient = GetWorld()->GetGameViewport();
-				if (ViewportClient != nullptr)
+				FVector MoveDelta = Location - TouchItem.Location;
+				FVector2D ScreenSize;
+				ViewportClient->GetViewportSize(ScreenSize);
+				FVector2D ScaledDelta = FVector2D(MoveDelta.X, MoveDelta.Y) / ScreenSize;
+				if (FMath::Abs(ScaledDelta.X) >= (4.0f / ScreenSize.X))
 				{
-					FVector MoveDelta = Location - TouchItem.Location;
-					FVector2D ScreenSize;
-					ViewportClient->GetViewportSize(ScreenSize);
-					FVector2D ScaledDelta = FVector2D(MoveDelta.X, MoveDelta.Y) / ScreenSize;
-					if (FMath::Abs(ScaledDelta.X) >= 4.0 / ScreenSize.X)
-					{
-						TouchItem.bMoved = true;
-						float Value = ScaledDelta.X * BaseTurnRate;
-						AddControllerYawInput(Value);
-					}
-					if (FMath::Abs(ScaledDelta.Y) >= 4.0 / ScreenSize.Y)
-					{
-						TouchItem.bMoved = true;
-						float Value = ScaledDelta.Y * BaseTurnRate;
-						AddControllerPitchInput(Value);
-					}
-					TouchItem.Location = Location;
+					TouchItem.bMoved = true;
+					float Value = ScaledDelta.X * BaseTurnRate;
+					AddControllerYawInput(Value);
+				}
+				if (FMath::Abs(ScaledDelta.Y) >= (4.0f / ScreenSize.Y))
+				{
+					TouchItem.bMoved = true;
+					float Value = ScaledDelta.Y* BaseTurnRate;
+					AddControllerPitchInput(Value);
 				}
 				TouchItem.Location = Location;
 			}
+			TouchItem.Location = Location;
 		}
 	}
 }
@@ -149,7 +217,7 @@ void AFirstPersonCharacter::MoveForward(float Value)
 {
 	if (Value != 0.0f)
 	{
-		// add movement in that direction
+		// Add movement in that direction
 		AddMovementInput(GetActorForwardVector(), Value);
 	}
 }
@@ -158,32 +226,38 @@ void AFirstPersonCharacter::MoveRight(float Value)
 {
 	if (Value != 0.0f)
 	{
-		// add movement in that direction
+		// Add movement in that direction
 		AddMovementInput(GetActorRightVector(), Value);
 	}
 }
 
 void AFirstPersonCharacter::TurnAtRate(float Rate)
 {
-	// calculate delta for this frame from the rate information
+	// Calculate delta for this frame from the rate information
 	AddControllerYawInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds());
 }
 
 void AFirstPersonCharacter::LookUpAtRate(float Rate)
 {
-	// calculate delta for this frame from the rate information
+	// Calculate delta for this frame from the rate information
 	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
 }
 
-bool AFirstPersonCharacter::EnableTouchscreenMovement(class UInputComponent* InputComponent)
+FHitResult AFirstPersonCharacter::WeaponTrace(const FVector& StartTrace, const FVector& EndTrace) const
 {
-	bool bResult = false;
-	if (FPlatformMisc::GetUseVirtualJoysticks() || GetDefault<UInputSettings>()->bUseMouseForTouch)
-	{
-		bResult = true;
-		InputComponent->BindTouch(EInputEvent::IE_Pressed, this, &AFirstPersonCharacter::BeginTouch);
-		InputComponent->BindTouch(EInputEvent::IE_Released, this, &AFirstPersonCharacter::EndTouch);
-		InputComponent->BindTouch(EInputEvent::IE_Repeat, this, &AFirstPersonCharacter::TouchUpdate);
-	}
-	return bResult;
+	// Perform trace to retrieve hit info
+	FCollisionQueryParams TraceParams(SCENE_QUERY_STAT(WeaponTrace), true, Instigator);
+	TraceParams.bReturnPhysicalMaterial = true;
+
+	FHitResult Hit(ForceInit);
+	GetWorld()->LineTraceSingleByChannel(Hit, StartTrace, EndTrace, COLLISION_WEAPON, TraceParams);
+
+	return Hit;
+}
+
+void AFirstPersonCharacter::TryEnableTouchscreenMovement(UInputComponent* PlayerInputComponent)
+{
+	PlayerInputComponent->BindTouch(EInputEvent::IE_Pressed, this, &AFirstPersonCharacter::BeginTouch);
+	PlayerInputComponent->BindTouch(EInputEvent::IE_Released, this, &AFirstPersonCharacter::EndTouch);
+	PlayerInputComponent->BindTouch(EInputEvent::IE_Repeat, this, &AFirstPersonCharacter::TouchUpdate);	
 }

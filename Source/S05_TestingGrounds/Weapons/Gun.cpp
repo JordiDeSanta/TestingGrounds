@@ -1,10 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "S05_TestingGrounds.h"
 #include "Gun.h"
 #include "BallProjectile.h"
 #include "Animation/AnimInstance.h"
-
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values
 AGun::AGun()

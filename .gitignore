@@ -2,6 +2,7 @@ Binaries
 DerivedDataCache
 Intermediate
 Saved
+.vs
 *.VC.db
 *.opensdf
 *.opendb
@@ -10,3 +11,5 @@ Saved
 *.suo
 *.xcodeproj
 *.xcworkspace
+*.db-shm
+*.db-wal

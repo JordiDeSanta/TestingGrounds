@@ -1,6 +1,5 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
-#include "S05_TestingGrounds.h"
 #include "S05_TestingGroundsHUD.h"
 #include "Engine/Canvas.h"
 #include "TextureResource.h"
