@@ -4,6 +4,7 @@
 #include "Components/InputComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Weapons/Gun.h"
 
 
@@ -15,6 +16,8 @@ APlayerCharacter::APlayerCharacter()
 
 	BaseLookUpRate = 45.f;
 	BaseTurnRate = 45.f;
+
+	DefaultSpeed = GetCharacterMovement()->MaxWalkSpeed;
 
 	// Create a CameraComponent	
 	FirstPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
@@ -54,6 +57,16 @@ void APlayerCharacter::Tick(float DeltaTime)
 
 }
 
+float APlayerCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const &DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	if (Health <= 0) { bIsDead = true;};
+	Health = Health - DamageAmount;
+
+	if (bIsDead) { DetachFromControllerPendingDestroy(); return Health; };
+
+	return Health;
+};
+
 // Called to bind functionality to input
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
@@ -75,6 +88,10 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	PlayerInputComponent->BindAxis("MoveForward", this, &APlayerCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &APlayerCharacter::MoveRight);
 
+	// Extra movement events
+	PlayerInputComponent->BindAction("Sprint", IE_Pressed, this, &APlayerCharacter::Sprint);
+	PlayerInputComponent->BindAction("Sprint", IE_Released, this, &APlayerCharacter::Walk);
+
 	// We have 2 versions of the rotation bindings to handle different kinds of devices differently
 	// "turn" handles devices that provide an absolute delta, such as a mouse.
 	// "turnrate" is for devices that we choose to treat as a rate of change, such as an analog joystick
@@ -87,7 +104,17 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 void APlayerCharacter::Fire()
 {
 	Gun->OnFire();
-}
+};
+
+void APlayerCharacter::Sprint()
+{
+	GetCharacterMovement()->MaxWalkSpeed = MaxVelocity;
+};
+
+void APlayerCharacter::Walk()
+{
+	GetCharacterMovement()->MaxWalkSpeed = DefaultSpeed;
+};
 
 void APlayerCharacter::MoveForward(float Value)
 {

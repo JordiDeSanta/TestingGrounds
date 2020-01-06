@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "Camera/CameraComponent.h"
 #include "Weapons/Gun.h"
+#include "GameFramework/Actor.h"
 #include "PlayerCharacter.generated.h"
 
 UCLASS()
@@ -25,6 +26,8 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const &DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
@@ -36,17 +39,31 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 		void Fire();
 
+	/// Damage variables
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health")
+		float Health = 100.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health")
+		bool bIsDead = false;
+
+	/// Movement variables
+
 	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 		float BaseTurnRate;
 
 	/** Base look up/down rate, in deg/sec. Other scaling may affect final rate. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 		float BaseLookUpRate;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fire")
 		bool bAiming = false;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+		float MaxVelocity = 800.f;
+
+	float DefaultSpeed;
 
 private:
 	/** Pawn mesh: 1st person view (arms; seen only by self) */
@@ -81,4 +98,7 @@ protected:
 	 */
 	void LookUpAtRate(float Rate);
 
+	void Sprint();
+
+	void Walk();
 };
