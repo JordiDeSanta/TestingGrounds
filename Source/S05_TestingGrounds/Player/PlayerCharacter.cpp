@@ -53,11 +53,13 @@ void APlayerCharacter::BeginPlay()
 	{
 		Gun->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint")); //Attach gun mesh component to Skeleton, doing it here because the skelton is not yet created in the constructor
 		Gun->AnimInstance = Mesh1P->GetAnimInstance();
+		Gun->FireAnimation = PlayerAnimation;
 	}
 	else
 	{
 		Gun->AttachToComponent(GetMesh(), FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint_0"));
 		Gun->AnimInstance = GetMesh()->GetAnimInstance();
+		Gun->FireAnimation = AIAnimation;
 	};
 
 	

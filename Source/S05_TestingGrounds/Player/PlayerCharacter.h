@@ -65,6 +65,12 @@ public:
 
 	float DefaultSpeed;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+		class UAnimMontage* PlayerAnimation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+		class UAnimMontage* AIAnimation;
+
 private:
 	/** Pawn mesh: 1st person view (arms; seen only by self) */
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
