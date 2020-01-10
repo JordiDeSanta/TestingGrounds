@@ -3,7 +3,6 @@
 
 #include "Tile.h"
 #include "Math/UnrealMathUtility.h"
-#include "GameFramework/Actor.h"
 #include "Engine/World.h"
 
 // Sets default values
@@ -28,21 +27,19 @@ void ATile::Tick(float DeltaTime)
 
 }
 
-void ATile::SpawnProp()
+void ATile::SpawnProp(TSubclassOf<AActor> ToSpawn, int MinSpawn, int MaxSpawn)
 {
-	FVector Min(0, -2000, 0);
-	FVector Max(4000, 2000, 0);
+	FVector Min(0, -2000, 100);
+	FVector Max(4000, 2000, 100);
 	FBox Bounds(Min, Max);
-	for (size_t i = 0; i < 3; i++)
+	int NumberOfActors = FMath::RandRange(MinSpawn, MaxSpawn);
+
+	for (size_t i = 0; i < NumberOfActors; i++)
 	{
 		FVector SpawnPoint = FMath::RandPointInBox(Bounds);
-		UE_LOG(LogTemp, Warning, TEXT("SpawnPoint: %s"), *SpawnPoint.ToCompactString())
-			GetWorld()->SpawnActor<class AActor>(
-				PropBlueprint,
-				SpawnPoint,
-				FRotator(),
-				FActorSpawnParameters()
-			);
+		AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(ToSpawn);
+		SpawnedActor->SetActorRelativeLocation(SpawnPoint);
+		SpawnedActor->AttachToActor(this, FAttachmentTransformRules(EAttachmentRule::KeepRelative, false));
 	}
 }
 

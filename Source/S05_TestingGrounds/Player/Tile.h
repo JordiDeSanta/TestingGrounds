@@ -24,8 +24,5 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	UFUNCTION(BlueprintCallable, Category = "Props")
-		void SpawnProp();
-
-	UPROPERTY(EditAnywhere, Category = "Props")
-		TSubclassOf<AActor> PropBlueprint = nullptr;
+		void SpawnProp(TSubclassOf<AActor> ToSpawn, int MinSpawn, int MaxSpawn);
 };
