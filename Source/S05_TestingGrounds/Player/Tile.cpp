@@ -16,7 +16,7 @@ ATile::ATile()
 
 }
 
-void ATile::SpawnProp(TSubclassOf<AActor> ToSpawn, int MinSpawn = 1, int MaxSpawn = 1, float Radius = 500.f)
+void ATile::SpawnProp(TSubclassOf<AActor> ToSpawn, int MinSpawn, int MaxSpawn, float Radius)
 {
 	/*
 	int NumberToSpawn = FMath::RandRange(MinSpawn, MaxSpawn);
@@ -69,9 +69,6 @@ void ATile::PlaceActor(TSubclassOf<AActor> ToSpawn, FVector SpawnPoint)
 void ATile::BeginPlay()
 {
 	Super::BeginPlay();
-
-	CanSpawnAtLocation(GetActorLocation(), 300);
-	CanSpawnAtLocation(GetActorLocation() + FVector(0, 0, 1000), 300);
 }
 
 // Called every frame
@@ -94,7 +91,7 @@ bool ATile::CanSpawnAtLocation(FVector Location, float Radius)
 		FCollisionShape::MakeSphere(Radius)
 	);
 	FColor ResultColor = HasHit ? FColor::Red : FColor::Green;
-	DrawDebugCapsule(GetWorld(), Location, 0, Radius, FQuat::Identity, ResultColor, true, 100);
+	DrawDebugCapsule(GetWorld(), GlobalLocation, 0, Radius, FQuat::Identity, ResultColor, true, 100);
 	return !HasHit;
 }
 
