@@ -7,7 +7,6 @@
 #include "Math/Color.h"
 #include "DrawDebugHelpers.h"
 
-
 // Sets default values
 ATile::ATile()
 {
@@ -31,7 +30,11 @@ void ATile::SpawnProp(TSubclassOf<AActor> ToSpawn, int MinSpawn, int MaxSpawn, f
 		FVector SpawnPoint;
 		bool bFound = FindEmptyLocation(SpawnPoint, Radius);
 
-		if (bFound) { PlaceActor(ToSpawn, SpawnPoint); };
+		if (bFound) 
+		{ 
+			float RandYaw = FMath::RandRange(-180.f, 180.f);
+			PlaceActor(ToSpawn, SpawnPoint, RandYaw); 
+		};
 	};
 };
 
@@ -58,10 +61,14 @@ bool ATile::FindEmptyLocation(FVector& OutLocation, float Radius)
 	return false;
 }
 
-void ATile::PlaceActor(TSubclassOf<AActor> ToSpawn, FVector SpawnPoint)
+void ATile::PlaceActor(TSubclassOf<AActor> ToSpawn, FVector SpawnPoint, float RandYaw)
 {
+	// Spawning actor
 	AActor* Spawned = GetWorld()->SpawnActor<AActor>(ToSpawn);
+
+	// Setting transform of actor
 	Spawned->SetActorRelativeLocation(SpawnPoint);
+	Spawned->SetActorRotation(FRotator(0.f, RandYaw, 0.f));
 	Spawned->AttachToActor(this, FAttachmentTransformRules(EAttachmentRule::KeepRelative, false));
 };
 
