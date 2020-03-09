@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ActorPool.h"
 #include "GameFramework/GameModeBase.h"
 #include "InfiniteTerrainGamemode.generated.h"
 
@@ -20,4 +21,7 @@ public:
 
 private:
 	void AddToPool(class ANavMeshBoundsVolume* VolumeToAdd);
+
+	UPROPERTY(EditAnywhere, Category = "ActorPool")
+		class UActorPool* ActorPool;
 };
