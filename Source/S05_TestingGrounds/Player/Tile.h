@@ -28,6 +28,8 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Pool")
 		void SetPool(class UActorPool* InPool);
+
+	void PositionNavMeshBoundsVolume();
 	
 private:
 	bool FindEmptyLocation(FVector& OutLocation, float Radius);

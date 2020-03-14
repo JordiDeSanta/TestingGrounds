@@ -15,6 +15,8 @@ UActorPool::UActorPool()
 
 AActor* UActorPool::Checkout()
 {
+	UE_LOG(LogTemp, Warning, TEXT("[%s] Checkout"), *GetName());
+
 	return nullptr;
 }
 
