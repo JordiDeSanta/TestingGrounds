@@ -36,7 +36,8 @@ void ATile::SpawnProp(TSubclassOf<AActor> ToSpawn, int MinSpawn, int MaxSpawn, f
 
 void ATile::SetPool(UActorPool* InPool)
 {
-	
+	Pool = InPool;
+	UE_LOG(LogTemp, Warning, TEXT("%s Setting Pool %s"), *(this->GetName()), *(Pool->GetName()));
 };
 
 bool ATile::FindEmptyLocation(FVector& OutLocation, float Radius)
