@@ -7,6 +7,7 @@
 #include "Math/Color.h"
 #include "DrawDebugHelpers.h"
 #include "EngineUtils.h"
+#include "Player/ActorPool.h"
 
 // Sets default values
 ATile::ATile()
@@ -31,6 +32,11 @@ void ATile::SpawnProp(TSubclassOf<AActor> ToSpawn, int MinSpawn, int MaxSpawn, f
 			PlaceActor(ToSpawn, SpawnPoint, RandYaw, RandScale); 
 		};
 	};
+}
+
+void ATile::SetPool(UActorPool* InPool)
+{
+	
 };
 
 bool ATile::FindEmptyLocation(FVector& OutLocation, float Radius)
@@ -104,6 +110,7 @@ bool ATile::CanSpawnAtLocation(FVector Location, float Radius)
 
 	return !HasHit;
 }
+
 
 
 

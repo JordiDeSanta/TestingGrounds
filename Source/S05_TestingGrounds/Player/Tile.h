@@ -26,10 +26,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Props")
 		void SpawnProp(TSubclassOf<AActor> ToSpawn, int MinSpawn = 1, int MaxSpawn = 1, float Radius = 500.f, float MinScale = 0.5, float MaxScale = 1.f);
 
+	UFUNCTION(BlueprintCallable, Category = "Pool")
+		void SetPool(class UActorPool* InPool);
+	
 private:
 	bool FindEmptyLocation(FVector& OutLocation, float Radius);
 
 	void PlaceActor(TSubclassOf<AActor> ToSpawn, FVector SpawnPoint, float RandYaw, float Scale);
 
 	bool CanSpawnAtLocation(FVector Location, float Radius);
+
+	UActorPool* Pool;
 };

@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ActorPool.h"
 #include "GameFramework/GameModeBase.h"
 #include "InfiniteTerrainGamemode.generated.h"
 
@@ -16,12 +15,15 @@ class S05_TESTINGGROUNDS_API AInfiniteTerrainGamemode : public AGameModeBase
 	GENERATED_BODY()
 	
 public:
+	AInfiniteTerrainGamemode();
+
 	UFUNCTION(BlueprintCallable, Category = "BoundsPool")
 	void PopulateBoundsVolumePool();
 
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Pool")
+		class UActorPool* NavMeshBoundsVolumePool;
+
 private:
 	void AddToPool(class ANavMeshBoundsVolume* VolumeToAdd);
-
-	UPROPERTY(EditAnywhere, Category = "ActorPool")
-		class UActorPool* ActorPool;
 };
